@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harvest of Heroes</title>
+  <link rel="stylesheet" href="styles/styles.css">
+</head>
+<body>
+  <header>
+    <h1>🌟 Harvest of Heroes 🌟</h1>
+  </header>
+
+  <main>
+    <div id="farm-container">
+      <h2>Your Farm</h2>
+      <div id="farm"></div>
+    </div>
+
+    <div id="controls-container">
+      <select id="crop-select" class="control-dropdown">
+        <option value="wheat">Wheat (10s, 10 Gold)</option>
+        <option value="corn">Corn (20s, 30 Gold)</option>
+        <option value="pumpkin">Pumpkin (30s, 50 Gold)</option>
+      </select>
+      <button id="plant-crop" class="control-button">🌱 Plant Selected Crop</button>
+      <button id="harvest" class="control-button">🌟 Harvest Crops</button>
+      <button id="add-plot" class="control-button">➕ Add Farm Slot</button>
+    </div>
+
+    <div id="inventory-container">
+      <h3>Inventory</h3>
+      <div id="inventory"></div>
+    </div>
+
+    <div id="shop-container">
+      <h3>Shop</h3>
+      <button id="sell-crops" class="control-button">💰 Sell All Crops</button>
+      <button id="upgrade-growth" class="control-button">🌱 Upgrade Growth Speed (100 Gold)</button>
+      <button id="upgrade-yield" class="control-button">🔼 Upgrade Yield (200 Gold)</button>
+    </div>
+    
+
+    <div id="resources">
+      <p>💰 Gold: <span id="gold-amount">0</span></p>
+    </div>
+
+    <div id="message-container">
+      <h3>Messages</h3>
+      <textarea id="message-box" readonly></textarea>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2024 Harvest of Heroes | Built with 🌾 and 🌟</p>
+  </footer>
+
+  <script src="scripts/script.js"></script>
+</body>
+</html>
