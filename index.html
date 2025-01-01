@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Time Weaver</title>
+    <style>
+        body {
+            font-family: 'Trebuchet MS', sans-serif;
+            background: radial-gradient(circle, #1e1e2f, #343456);
+            color: #ffffff;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            margin-top: 20px;
+            font-size: 3rem;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+        }
+
+        #threadButton {
+            margin: 20px auto;
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, #6c63ff, #867dfc);
+            border: none;
+            border-radius: 15px;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 8px #4941d6;
+            transition: all 0.3s ease;
+        }
+
+        #threadButton:active {
+            box-shadow: 0 4px #4941d6;
+            transform: translateY(4px);
+        }
+
+        #threadButton:hover {
+            background: linear-gradient(90deg, #867dfc, #6c63ff);
+        }
+
+        #resources {
+            margin: 20px 0;
+            font-size: 1.2rem;
+        }
+
+        .upgrade {
+            margin: 15px;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            background: linear-gradient(90deg, #4caf50, #81c784);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 6px #388e3c;
+            transition: all 0.3s ease;
+        }
+
+        .upgrade:disabled {
+            background: #777;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .upgrade:hover:not(:disabled) {
+            background: linear-gradient(90deg, #81c784, #4caf50);
+        }
+
+        .upgrade:active:not(:disabled) {
+            box-shadow: 0 3px #388e3c;
+            transform: translateY(3px);
+        }
+
+        #timeline {
+            margin: 20px auto;
+            padding: 20px;
+            background: #2c2f3a;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 800px;
+            color: #ddd;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+            text-align: left;
+        }
+
+        #timeline h2 {
+            margin: 0 0 20px;
+            font-size: 2rem;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+        }
+
+        .event {
+            margin: 10px 0;
+            padding: 10px;
+            background: linear-gradient(90deg, #607d8b, #78909c);
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .visual-feedback {
+            position: absolute;
+            pointer-events: none;
+            font-size: 1rem;
+            color: #ffd700;
+            animation: fadeOut 1s ease forwards;
+        }
+
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+        }
+
+        /* Additional styling for multiple upgrades */
+        .upgrade-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .upgrade-item {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Time Weaver</h1>
+
+    <div id="resources">
+        <p><strong>Threads:</strong> <span id="threadCount">0</span></p>
+        <p><strong>Threads / second:</strong> <span id="threadsPerSecond">0</span></p>
+    </div>
+
+    <button id="threadButton">Weave Time Thread</button>
+
+    <div id="upgrades" class="upgrade-container">
+        <!-- Upgrade buttons will be dynamically generated here -->
+    </div>
+
+    <div id="timeline">
+        <h2>Timeline</h2>
+        <button class="upgrade" id="createEvent" disabled>Weave Event (100 threads)</button>
+        <div id="events">
+            <!-- Timeline events will appear here -->
+        </div>
+    </div>
+
+    <script>
+        // Current resources
+        let threads = 0;
+
+        // List of upgrades
+        // Each upgrade has:
+        // id: a unique ID
+        // name: display name for the upgrade
+        // cost: current cost in threads
+        // costGrowth: multiplier for cost increase after each purchase
+        // tps: how many threads/second it contributes
+        // owned: how many of this upgrade are owned
+        // description: a short description (optional)
+        const upgrades = [
+            {
+                id: 'loomSpinner',
+                name: 'Loom Spinner',
+                cost: 50,
+                costGrowth: 1.5,
+                tps: 1,
+                owned: 0,
+                description: 'Generates 1 Thread per second.',
+            },
+            {
+                id: 'quantumSpinner',
+                name: 'Quantum Spinner',
+                cost: 250,
+                costGrowth: 1.6,
+                tps: 5,
+                owned: 0,
+                description: 'Generates 5 Threads per second.',
+            },
+            {
+                id: 'dimensionalLoom',
+                name: 'Dimensional Loom',
+                cost: 1000,
+                costGrowth: 1.7,
+                tps: 20,
+                owned: 0,
+                description: 'Generates 20 Threads per second.',
+            }
+        ];
+
+        // Cost of weaving an event
+        let eventCost = 100;
+
+        // Create upgrade buttons dynamically
+        function createUpgradeButtons() {
+            const upgradesContainer = document.getElementById('upgrades');
+
+            upgrades.forEach((upgrade) => {
+                const container = document.createElement('div');
+                container.classList.add('upgrade-item');
+
+                const btn = document.createElement('button');
+                btn.classList.add('upgrade');
+                btn.id = upgrade.id;
+                btn.textContent = `${upgrade.name} (${upgrade.cost} Threads)`;
+                btn.addEventListener('click', () => {
+                    buyUpgrade(upgrade);
+                });
+
+                container.appendChild(btn);
+
+                // Optional: a small text description under the button
+                const desc = document.createElement('p');
+                desc.style.fontSize = '0.9rem';
+                desc.textContent = upgrade.description;
+                container.appendChild(desc);
+
+                upgradesContainer.appendChild(container);
+            });
+        }
+
+        // Buy an upgrade
+        function buyUpgrade(upgrade) {
+            if (threads >= upgrade.cost) {
+                threads -= upgrade.cost;
+                upgrade.owned++;
+                // Increase the cost for the next purchase of this upgrade
+                upgrade.cost = Math.floor(upgrade.cost * upgrade.costGrowth);
+
+                // Update the button text
+                const btn = document.getElementById(upgrade.id);
+                btn.textContent = `${upgrade.name} (${upgrade.cost} Threads)`;
+
+                updateUI();
+            }
+        }
+
+        // Calculate total threads per second based on owned upgrades
+        function getThreadsPerSecond() {
+            return upgrades.reduce((total, upgrade) => {
+                return total + (upgrade.tps * upgrade.owned);
+            }, 0);
+        }
+
+        // Update the UI with current resources and button states
+        function updateUI() {
+            document.getElementById('threadCount').textContent = threads;
+            document.getElementById('threadsPerSecond').textContent = getThreadsPerSecond();
+
+            // Enable or disable the purchase of each upgrade
+            upgrades.forEach((upgrade) => {
+                const btn = document.getElementById(upgrade.id);
+                if (threads >= upgrade.cost) {
+                    btn.disabled = false;
+                } else {
+                    btn.disabled = true;
+                }
+            });
+
+            // Enable or disable event creation
+            document.getElementById('createEvent').disabled = threads < eventCost;
+        }
+
+        // Add visual feedback for thread generation
+        function showVisualFeedback(text, x, y) {
+            const feedback = document.createElement('div');
+            feedback.classList.add('visual-feedback');
+            feedback.style.left = `${x}px`;
+            feedback.style.top = `${y}px`;
+            feedback.textContent = text;
+            document.body.appendChild(feedback);
+
+            setTimeout(() => {
+                feedback.remove();
+            }, 1000);
+        }
+
+        // Manual thread collection
+        document.getElementById('threadButton').addEventListener('click', (e) => {
+            threads++;
+            updateUI();
+
+            const rect = e.target.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top;
+            showVisualFeedback('+1', x, y);
+        });
+
+        // Automate thread production
+        // Every second, add threads based on total TPS
+        setInterval(() => {
+            const tps = getThreadsPerSecond();
+            if (tps > 0) {
+                threads += tps;
+                updateUI();
+
+                // Provide visual feedback near the thread button
+                const button = document.getElementById('threadButton');
+                const rect = button.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top;
+                if (tps > 0) {
+                    showVisualFeedback(`+${tps}`, x, y);
+                }
+            }
+        }, 1000);
+
+        // Weave an event into the timeline
+        document.getElementById('createEvent').addEventListener('click', () => {
+            if (threads >= eventCost) {
+                threads -= eventCost;
+                const event = document.createElement('div');
+                event.classList.add('event');
+                event.textContent = `Event ${document.querySelectorAll('.event').length + 1}: A moment in time.`;
+                document.getElementById('events').appendChild(event);
+                updateUI();
+            }
+        });
+
+        // Initialize upgrade buttons and UI
+        createUpgradeButtons();
+        updateUI();
+    </script>
+</body>
+</html>
