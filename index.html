@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Time Weaver</title>
     <style>
         body {
@@ -141,6 +141,12 @@
         <button class="upgrade" id="efficiencyUpgrade" disabled></button>
     </div>
 
+    <!-- You can keep these buttons if you also want manual save/load,
+         but it's optional once auto save/load is in place -->
+    <div>
+        <button class="upgrade" id="saveGame">Save Game</button>
+    </div>
+
     <div id="timeline">
         <h2>Timeline</h2>
         <button class="upgrade" id="createEvent" disabled>Weave Event (100 threads)</button>
@@ -158,101 +164,67 @@
         let loomSpinnerCost = 50;
 
         // Speed Upgrade
-        // Each level doubles Loom Spinner production: 1→2→4→8...
-        // The cost array can expand beyond the first few values if needed.
         let speedLevel = 0;
         const speedCosts = [50, 150, 300, 600, 1200];
 
-        /*
-            Speed Upgrades
-            Core Idea:
-            Each upgrade doubles the production rate of the Loom Spinner (1 → 2 → 4 → 8 threads/sec, etc.).
-            The cost of each Speed Upgrade also scales up progressively (e.g., 50 → 150 → 300 threads, etc.).
-
-            Why It Works:
-            This offers exponential growth potential, making it a compelling upgrade path.
-        */
-
         // Efficiency Upgrade
-        // - Cost Reduction: each level reduces future purchase costs by a small %
-        // - Production Boost: each level grants +10% multiplicative production bonus
         let efficiencyLevel = 0;
         const efficiencyCosts = [100, 200, 400, 800];
 
-        /*
-            Efficiency Upgrades
-            Core Idea:
-            Cost Reduction: Each Efficiency Upgrade reduces the cost of future purchases by a small percentage (e.g., -2% or -5% per rank).
-            Production Boost: Each Efficiency Upgrade also grants a smaller multiplicative boost to production (e.g., +10% per rank, stacking).
-        */
+        // Cost for weaving an event
+        let eventCost = 100;
 
-        // For simplicity, let's define:
-        // - 5% cost reduction per rank (applied to Loom Spinner + Speed Upgrade costs)
-        // - +10% production for Loom Spinners, stacked multiplicatively with Speed Upgrades
-        // You can tweak these values as you see fit.
-
+        // ----- HELPER FUNCTIONS -----
         function getCostDiscountFactor() {
-            // 5% discount per level
-            // e.g., level=1 => 0.95, level=2 => 0.90, etc.
+            // 5% discount per level, never below 50%
             const discount = 0.05 * efficiencyLevel;
-            // avoid going below 50% or negative discount
             return Math.max(1 - discount, 0.5);
         }
 
         function getProductionMultiplier() {
-            // +10% per rank
+            // +10% per efficiency level
             return 1 + 0.1 * efficiencyLevel;
         }
 
-        // Functions to get next Speed/Efficiency costs
+        // Dynamic cost for Speed Upgrades
         function getSpeedUpgradeBaseCost() {
             if (speedLevel < speedCosts.length) {
                 return speedCosts[speedLevel];
             } else {
-                // If beyond the initial array, just double the last known cost each time.
+                // beyond array => double the last known cost
                 let lastCost = speedCosts[speedCosts.length - 1];
-                return lastCost * 2 ** (speedLevel - speedCosts.length + 1);
+                return lastCost * Math.pow(2, speedLevel - speedCosts.length + 1);
             }
         }
-
         function getSpeedUpgradeCost() {
-            // apply cost discount factor
             return Math.floor(getSpeedUpgradeBaseCost() * getCostDiscountFactor());
         }
 
+        // Dynamic cost for Efficiency Upgrades
         function getEfficiencyUpgradeBaseCost() {
             if (efficiencyLevel < efficiencyCosts.length) {
                 return efficiencyCosts[efficiencyLevel];
             } else {
-                // double the last known cost each time
                 let lastCost = efficiencyCosts[efficiencyCosts.length - 1];
-                return lastCost * 2 ** (efficiencyLevel - efficiencyCosts.length + 1);
+                return lastCost * Math.pow(2, efficiencyLevel - efficiencyCosts.length + 1);
             }
         }
-
         function getEfficiencyUpgradeCost() {
-            // Efficiency upgrade cost is not discounted by itself in this example
+            // Efficiency upgrade cost is not discounted by itself
             return getEfficiencyUpgradeBaseCost();
         }
 
         function getLoomSpinnerCost() {
-            // apply discount factor
             return Math.floor(loomSpinnerCost * getCostDiscountFactor());
         }
 
-        // main TPS calculation
         function getThreadsPerSecond() {
-            // base production for each Loom Spinner is 1
-            // speedLevel doubles that => 2^speedLevel
-            // efficiencyLevel adds +10% each => multiply by getProductionMultiplier()
+            // Each Loom Spinner produces 1 base, multiplied by 2^speedLevel, then efficiency bonus
             const spinnerRate = Math.pow(2, speedLevel) * getProductionMultiplier();
             return Math.floor(loomSpinners * spinnerRate);
         }
 
-        // cost for weaving an event
-        let eventCost = 100;
-
-        // update UI
+        // ----- UI UPDATES -----
         function updateUI() {
             document.getElementById('threadCount').textContent = threads;
             document.getElementById('threadsPerSecond').textContent = getThreadsPerSecond();
@@ -279,7 +251,7 @@
             document.getElementById('createEvent').disabled = threads < eventCost;
         }
 
-        // visual feedback
+        // Visual feedback
         function showVisualFeedback(text, x, y) {
             const feedback = document.createElement('div');
             feedback.classList.add('visual-feedback');
@@ -293,30 +265,29 @@
             }, 1000);
         }
 
-        // thread button
+        // ----- GAME LOGIC & EVENTS -----
         document.getElementById('threadButton').addEventListener('click', (e) => {
             threads++;
             updateUI();
 
+            // Show the +1 feedback
             const rect = e.target.getBoundingClientRect();
             const x = rect.left + rect.width / 2;
             const y = rect.top;
             showVisualFeedback('+1', x, y);
         });
 
-        // buy Loom Spinner
         document.getElementById('loomSpinnerUpgrade').addEventListener('click', () => {
             const cost = getLoomSpinnerCost();
             if (threads >= cost) {
                 threads -= cost;
                 loomSpinners++;
-                // base cost grows each time, no discount on growth factor
+                // Increase base cost for the next Loom Spinner
                 loomSpinnerCost = Math.floor(loomSpinnerCost * 1.5);
                 updateUI();
             }
         });
 
-        // buy Speed Upgrade
         document.getElementById('speedUpgrade').addEventListener('click', () => {
             const cost = getSpeedUpgradeCost();
             if (threads >= cost) {
@@ -326,7 +297,6 @@
             }
         });
 
-        // buy Efficiency Upgrade
         document.getElementById('efficiencyUpgrade').addEventListener('click', () => {
             const cost = getEfficiencyUpgradeCost();
             if (threads >= cost) {
@@ -336,12 +306,14 @@
             }
         });
 
-        // thread production automation
+        // Automation for thread production
         setInterval(() => {
             const tps = getThreadsPerSecond();
             if (tps > 0) {
                 threads += tps;
                 updateUI();
+
+                // Show feedback on the main button
                 const button = document.getElementById('threadButton');
                 const rect = button.getBoundingClientRect();
                 const x = rect.left + rect.width / 2;
@@ -350,7 +322,7 @@
             }
         }, 1000);
 
-        // create timeline event
+        // Create timeline event
         document.getElementById('createEvent').addEventListener('click', () => {
             if (threads >= eventCost) {
                 threads -= eventCost;
@@ -362,7 +334,73 @@
             }
         });
 
-        // init
+        // ----- SAVE / LOAD FUNCTIONALITY -----
+        function saveGame() {
+            const gameState = {
+                threads,
+                loomSpinners,
+                speedLevel,
+                efficiencyLevel,
+                loomSpinnerCost,
+                // We'll store the text from each event so we can rebuild them on load
+                events: []
+            };
+
+            document.querySelectorAll('.event').forEach(eventDiv => {
+                gameState.events.push(eventDiv.textContent);
+            });
+
+            localStorage.setItem('timeWeaverSave', JSON.stringify(gameState));
+            // Silently save (or optionally console.log / show a small message)
+            console.log('Game auto-saved.');
+        }
+
+        function loadGame() {
+            const savedData = localStorage.getItem('timeWeaverSave');
+            if (!savedData) {
+                console.log('No saved game found!');
+                return;
+            }
+            try {
+                const data = JSON.parse(savedData);
+                threads = data.threads || 0;
+                loomSpinners = data.loomSpinners || 0;
+                speedLevel = data.speedLevel || 0;
+                efficiencyLevel = data.efficiencyLevel || 0;
+                loomSpinnerCost = data.loomSpinnerCost || 50;
+
+                // Rebuild event list
+                const eventsContainer = document.getElementById('events');
+                eventsContainer.innerHTML = '';
+                if (Array.isArray(data.events)) {
+                    data.events.forEach((eventText) => {
+                        const eventDiv = document.createElement('div');
+                        eventDiv.classList.add('event');
+                        eventDiv.textContent = eventText;
+                        eventsContainer.appendChild(eventDiv);
+                    });
+                }
+
+                updateUI();
+                console.log('Game auto-loaded successfully!');
+            } catch (e) {
+                console.error('Error loading save data: ', e);
+                alert('Failed to load the game. The save data might be corrupted.');
+            }
+        }
+
+        // Hook up manual Save/Load buttons (if kept)
+        document.getElementById('saveGame').addEventListener('click', saveGame);
+
+        // ----- AUTOMATIC LOAD ON PAGE LOAD -----
+        // This will attempt to load the game immediately.
+        loadGame();
+
+        // ----- AUTOMATIC SAVE -----
+        // Save the game every 10 seconds (adjust as desired)
+        setInterval(saveGame, 10000);
+
+        // Initialize UI after load or fresh start
         updateUI();
     </script>
 </body>
