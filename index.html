@@ -121,16 +121,6 @@
                 transform: translateY(-30px);
             }
         }
-
-        /* Additional styling for multiple upgrades */
-        .upgrade-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .upgrade-item {
-            margin: 5px 0;
-        }
     </style>
 </head>
 <body>
@@ -143,8 +133,12 @@
 
     <button id="threadButton">Weave Time Thread</button>
 
-    <div id="upgrades" class="upgrade-container">
-        <!-- Upgrade buttons will be dynamically generated here -->
+    <div id="upgrades">
+        <button class="upgrade" id="loomSpinnerUpgrade" disabled>Buy Loom Spinner (50 threads)</button>
+        <!-- Speed Upgrade button -->
+        <button class="upgrade" id="speedUpgrade" disabled></button>
+        <!-- Efficiency Upgrade button -->
+        <button class="upgrade" id="efficiencyUpgrade" disabled></button>
     </div>
 
     <div id="timeline">
@@ -156,122 +150,136 @@
     </div>
 
     <script>
-        // Current resources
+        // Core resources
         let threads = 0;
 
-        // List of upgrades
-        // Each upgrade has:
-        // id: a unique ID
-        // name: display name for the upgrade
-        // cost: current cost in threads
-        // costGrowth: multiplier for cost increase after each purchase
-        // tps: how many threads/second it contributes
-        // owned: how many of this upgrade are owned
-        // description: a short description (optional)
-        const upgrades = [
-            {
-                id: 'loomSpinner',
-                name: 'Loom Spinner',
-                cost: 50,
-                costGrowth: 1.5,
-                tps: 1,
-                owned: 0,
-                description: 'Generates 1 Thread per second.',
-            },
-            {
-                id: 'quantumSpinner',
-                name: 'Quantum Spinner',
-                cost: 250,
-                costGrowth: 1.6,
-                tps: 5,
-                owned: 0,
-                description: 'Generates 5 Threads per second.',
-            },
-            {
-                id: 'dimensionalLoom',
-                name: 'Dimensional Loom',
-                cost: 1000,
-                costGrowth: 1.7,
-                tps: 20,
-                owned: 0,
-                description: 'Generates 20 Threads per second.',
-            }
-        ];
+        // Loom Spinner data
+        let loomSpinners = 0;
+        let loomSpinnerCost = 50;
 
-        // Cost of weaving an event
+        // Speed Upgrade
+        // Each level doubles Loom Spinner production: 1→2→4→8...
+        // The cost array can expand beyond the first few values if needed.
+        let speedLevel = 0;
+        const speedCosts = [50, 150, 300, 600, 1200];
+
+        /*
+            Speed Upgrades
+            Core Idea:
+            Each upgrade doubles the production rate of the Loom Spinner (1 → 2 → 4 → 8 threads/sec, etc.).
+            The cost of each Speed Upgrade also scales up progressively (e.g., 50 → 150 → 300 threads, etc.).
+
+            Why It Works:
+            This offers exponential growth potential, making it a compelling upgrade path.
+        */
+
+        // Efficiency Upgrade
+        // - Cost Reduction: each level reduces future purchase costs by a small %
+        // - Production Boost: each level grants +10% multiplicative production bonus
+        let efficiencyLevel = 0;
+        const efficiencyCosts = [100, 200, 400, 800];
+
+        /*
+            Efficiency Upgrades
+            Core Idea:
+            Cost Reduction: Each Efficiency Upgrade reduces the cost of future purchases by a small percentage (e.g., -2% or -5% per rank).
+            Production Boost: Each Efficiency Upgrade also grants a smaller multiplicative boost to production (e.g., +10% per rank, stacking).
+        */
+
+        // For simplicity, let's define:
+        // - 5% cost reduction per rank (applied to Loom Spinner + Speed Upgrade costs)
+        // - +10% production for Loom Spinners, stacked multiplicatively with Speed Upgrades
+        // You can tweak these values as you see fit.
+
+        function getCostDiscountFactor() {
+            // 5% discount per level
+            // e.g., level=1 => 0.95, level=2 => 0.90, etc.
+            const discount = 0.05 * efficiencyLevel;
+            // avoid going below 50% or negative discount
+            return Math.max(1 - discount, 0.5);
+        }
+
+        function getProductionMultiplier() {
+            // +10% per rank
+            return 1 + 0.1 * efficiencyLevel;
+        }
+
+        // Functions to get next Speed/Efficiency costs
+        function getSpeedUpgradeBaseCost() {
+            if (speedLevel < speedCosts.length) {
+                return speedCosts[speedLevel];
+            } else {
+                // If beyond the initial array, just double the last known cost each time.
+                let lastCost = speedCosts[speedCosts.length - 1];
+                return lastCost * 2 ** (speedLevel - speedCosts.length + 1);
+            }
+        }
+
+        function getSpeedUpgradeCost() {
+            // apply cost discount factor
+            return Math.floor(getSpeedUpgradeBaseCost() * getCostDiscountFactor());
+        }
+
+        function getEfficiencyUpgradeBaseCost() {
+            if (efficiencyLevel < efficiencyCosts.length) {
+                return efficiencyCosts[efficiencyLevel];
+            } else {
+                // double the last known cost each time
+                let lastCost = efficiencyCosts[efficiencyCosts.length - 1];
+                return lastCost * 2 ** (efficiencyLevel - efficiencyCosts.length + 1);
+            }
+        }
+
+        function getEfficiencyUpgradeCost() {
+            // Efficiency upgrade cost is not discounted by itself in this example
+            return getEfficiencyUpgradeBaseCost();
+        }
+
+        function getLoomSpinnerCost() {
+            // apply discount factor
+            return Math.floor(loomSpinnerCost * getCostDiscountFactor());
+        }
+
+        // main TPS calculation
+        function getThreadsPerSecond() {
+            // base production for each Loom Spinner is 1
+            // speedLevel doubles that => 2^speedLevel
+            // efficiencyLevel adds +10% each => multiply by getProductionMultiplier()
+            const spinnerRate = Math.pow(2, speedLevel) * getProductionMultiplier();
+            return Math.floor(loomSpinners * spinnerRate);
+        }
+
+        // cost for weaving an event
         let eventCost = 100;
 
-        // Create upgrade buttons dynamically
-        function createUpgradeButtons() {
-            const upgradesContainer = document.getElementById('upgrades');
-
-            upgrades.forEach((upgrade) => {
-                const container = document.createElement('div');
-                container.classList.add('upgrade-item');
-
-                const btn = document.createElement('button');
-                btn.classList.add('upgrade');
-                btn.id = upgrade.id;
-                btn.textContent = `${upgrade.name} (${upgrade.cost} Threads)`;
-                btn.addEventListener('click', () => {
-                    buyUpgrade(upgrade);
-                });
-
-                container.appendChild(btn);
-
-                // Optional: a small text description under the button
-                const desc = document.createElement('p');
-                desc.style.fontSize = '0.9rem';
-                desc.textContent = upgrade.description;
-                container.appendChild(desc);
-
-                upgradesContainer.appendChild(container);
-            });
-        }
-
-        // Buy an upgrade
-        function buyUpgrade(upgrade) {
-            if (threads >= upgrade.cost) {
-                threads -= upgrade.cost;
-                upgrade.owned++;
-                // Increase the cost for the next purchase of this upgrade
-                upgrade.cost = Math.floor(upgrade.cost * upgrade.costGrowth);
-
-                // Update the button text
-                const btn = document.getElementById(upgrade.id);
-                btn.textContent = `${upgrade.name} (${upgrade.cost} Threads)`;
-
-                updateUI();
-            }
-        }
-
-        // Calculate total threads per second based on owned upgrades
-        function getThreadsPerSecond() {
-            return upgrades.reduce((total, upgrade) => {
-                return total + (upgrade.tps * upgrade.owned);
-            }, 0);
-        }
-
-        // Update the UI with current resources and button states
+        // update UI
         function updateUI() {
             document.getElementById('threadCount').textContent = threads;
             document.getElementById('threadsPerSecond').textContent = getThreadsPerSecond();
 
-            // Enable or disable the purchase of each upgrade
-            upgrades.forEach((upgrade) => {
-                const btn = document.getElementById(upgrade.id);
-                if (threads >= upgrade.cost) {
-                    btn.disabled = false;
-                } else {
-                    btn.disabled = true;
-                }
-            });
+            // Loom Spinner button
+            const spinnerCost = getLoomSpinnerCost();
+            const spinnerBtn = document.getElementById('loomSpinnerUpgrade');
+            spinnerBtn.textContent = `Buy Loom Spinner (${spinnerCost} threads)`;
+            spinnerBtn.disabled = threads < spinnerCost;
 
-            // Enable or disable event creation
+            // Speed Upgrade button
+            const speedCost = getSpeedUpgradeCost();
+            const speedBtn = document.getElementById('speedUpgrade');
+            speedBtn.textContent = `Speed Upgrade (Cost: ${speedCost}, Level: ${speedLevel})`;
+            speedBtn.disabled = threads < speedCost;
+
+            // Efficiency Upgrade button
+            const effCost = getEfficiencyUpgradeCost();
+            const effBtn = document.getElementById('efficiencyUpgrade');
+            effBtn.textContent = `Efficiency Upgrade (Cost: ${effCost}, Level: ${efficiencyLevel})`;
+            effBtn.disabled = threads < effCost;
+
+            // Event creation button
             document.getElementById('createEvent').disabled = threads < eventCost;
         }
 
-        // Add visual feedback for thread generation
+        // visual feedback
         function showVisualFeedback(text, x, y) {
             const feedback = document.createElement('div');
             feedback.classList.add('visual-feedback');
@@ -285,7 +293,7 @@
             }, 1000);
         }
 
-        // Manual thread collection
+        // thread button
         document.getElementById('threadButton').addEventListener('click', (e) => {
             threads++;
             updateUI();
@@ -296,39 +304,65 @@
             showVisualFeedback('+1', x, y);
         });
 
-        // Automate thread production
-        // Every second, add threads based on total TPS
+        // buy Loom Spinner
+        document.getElementById('loomSpinnerUpgrade').addEventListener('click', () => {
+            const cost = getLoomSpinnerCost();
+            if (threads >= cost) {
+                threads -= cost;
+                loomSpinners++;
+                // base cost grows each time, no discount on growth factor
+                loomSpinnerCost = Math.floor(loomSpinnerCost * 1.5);
+                updateUI();
+            }
+        });
+
+        // buy Speed Upgrade
+        document.getElementById('speedUpgrade').addEventListener('click', () => {
+            const cost = getSpeedUpgradeCost();
+            if (threads >= cost) {
+                threads -= cost;
+                speedLevel++;
+                updateUI();
+            }
+        });
+
+        // buy Efficiency Upgrade
+        document.getElementById('efficiencyUpgrade').addEventListener('click', () => {
+            const cost = getEfficiencyUpgradeCost();
+            if (threads >= cost) {
+                threads -= cost;
+                efficiencyLevel++;
+                updateUI();
+            }
+        });
+
+        // thread production automation
         setInterval(() => {
             const tps = getThreadsPerSecond();
             if (tps > 0) {
                 threads += tps;
                 updateUI();
-
-                // Provide visual feedback near the thread button
                 const button = document.getElementById('threadButton');
                 const rect = button.getBoundingClientRect();
                 const x = rect.left + rect.width / 2;
                 const y = rect.top;
-                if (tps > 0) {
-                    showVisualFeedback(`+${tps}`, x, y);
-                }
+                showVisualFeedback(`+${tps}`, x, y);
             }
         }, 1000);
 
-        // Weave an event into the timeline
+        // create timeline event
         document.getElementById('createEvent').addEventListener('click', () => {
             if (threads >= eventCost) {
                 threads -= eventCost;
-                const event = document.createElement('div');
-                event.classList.add('event');
-                event.textContent = `Event ${document.querySelectorAll('.event').length + 1}: A moment in time.`;
-                document.getElementById('events').appendChild(event);
+                const eventDiv = document.createElement('div');
+                eventDiv.classList.add('event');
+                eventDiv.textContent = `Event ${document.querySelectorAll('.event').length + 1}: A moment in time.`;
+                document.getElementById('events').appendChild(eventDiv);
                 updateUI();
             }
         });
 
-        // Initialize upgrade buttons and UI
-        createUpgradeButtons();
+        // init
         updateUI();
     </script>
 </body>
