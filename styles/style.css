@@ -1,0 +1,116 @@
+body {
+    font-family: 'Trebuchet MS', sans-serif;
+    background: radial-gradient(circle, #1e1e2f, #343456);
+    color: #ffffff;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    margin-top: 20px;
+    font-size: 3rem;
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+}
+
+#threadButton {
+    margin: 20px auto;
+    padding: 20px 40px;
+    font-size: 1.5rem;
+    background: linear-gradient(90deg, #6c63ff, #867dfc);
+    border: none;
+    border-radius: 15px;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 8px #4941d6;
+    transition: all 0.3s ease;
+}
+
+#threadButton:active {
+    box-shadow: 0 4px #4941d6;
+    transform: translateY(4px);
+}
+
+#threadButton:hover {
+    background: linear-gradient(90deg, #867dfc, #6c63ff);
+}
+
+#resources {
+    margin: 20px 0;
+    font-size: 1.2rem;
+}
+
+.upgrade {
+    margin: 15px;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    background: linear-gradient(90deg, #4caf50, #81c784);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 6px #388e3c;
+    transition: all 0.3s ease;
+}
+
+.upgrade:disabled {
+    background: #777;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.upgrade:hover:not(:disabled) {
+    background: linear-gradient(90deg, #81c784, #4caf50);
+}
+
+.upgrade:active:not(:disabled) {
+    box-shadow: 0 3px #388e3c;
+    transform: translateY(3px);
+}
+
+#timeline {
+    margin: 20px auto;
+    padding: 20px;
+    background: #2c2f3a;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 800px;
+    color: #ddd;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+    text-align: left;
+}
+
+#timeline h2 {
+    margin: 0 0 20px;
+    font-size: 2rem;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+}
+
+.event {
+    margin: 10px 0;
+    padding: 10px;
+    background: linear-gradient(90deg, #607d8b, #78909c);
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-size: 1rem;
+}
+
+.visual-feedback {
+    position: absolute;
+    pointer-events: none;
+    font-size: 1rem;
+    color: #ffd700;
+    animation: fadeOut 1s ease forwards;
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+}
